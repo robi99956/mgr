@@ -5,7 +5,7 @@ LIBS_CV = $(shell pkg-config --libs opencv4)
 CFLAGS = $(CFLAGS_CV) \
     -Wall \
     -Wextra \
-    -Werror 
+    -Werror
 
 LIBS = $(LIBS_CV)
 
