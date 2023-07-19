@@ -9,7 +9,12 @@ CFLAGS = $(CFLAGS_CV) \
 
 LIBS = $(LIBS_CV)
 
-OBJECTS=build/main.o build/feature_detectors.o
+OBJECTS = \
+	build/main.o \
+	build/feature_processor.o \
+	build/matching_points.o \
+	build/movement.o \
+	build/position.o
 
 INCLUDES=-Isrc/
 
