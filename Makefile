@@ -14,7 +14,9 @@ OBJECTS = \
 	build/feature_processor.o \
 	build/matching_points.o \
 	build/movement.o \
-	build/position.o
+	build/position.o \
+	build/matrix_math.o \
+	build/optimization.o
 
 INCLUDES=-Isrc/
 
