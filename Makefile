@@ -1,13 +1,16 @@
 CC = g++
 CFLAGS_CV = $(shell pkg-config --cflags opencv4)
 LIBS_CV = $(shell pkg-config --libs opencv4)
+CFLAGS_EIGEN = $(shell pkg-config --cflags eigen3)
+LIBS_EIGEN = $(shell pkg-config --libs eigen3)
 
-CFLAGS = $(CFLAGS_CV) \
+CFLAGS = $(CFLAGS_CV) $(CFLAGS_EIGEN) \
     -Wall \
     -Wextra \
-    -Werror
+    -Werror \
+	-g
 
-LIBS = $(LIBS_CV)
+LIBS = $(LIBS_CV) $(LIBS_EIGEN)
 
 OBJECTS = \
 	build/main.o \
@@ -15,7 +18,6 @@ OBJECTS = \
 	build/matching_points.o \
 	build/movement.o \
 	build/position.o \
-	build/matrix_math.o \
 	build/optimization.o
 
 INCLUDES=-Isrc/
