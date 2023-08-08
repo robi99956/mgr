@@ -2,6 +2,7 @@
 #define MOVEMENT_H
 
 #include "position.h"
+#include "matrix_math.h"
 #include "matching_points.h"
 
 class MovementModel {
@@ -9,9 +10,7 @@ public:
     double dx, dy, dangle;
     double xo, yo;
 
-    MovementModel(double dx, double dy, double dangle,
-            double xo, double yo);
-    MovementModel( void );
+    MovementModel( Vector &x );
 };
 
 class MovementDetector {

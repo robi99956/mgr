@@ -60,6 +60,14 @@ class TestProblem : public OptimizationProblem {
         Vector w = Vector::Ones(2);
         return w;
     }
+
+    int variable_count( void ) {
+        return 2;
+    }
+
+    int row_count( void ) {
+        return 2;
+    }
 };
 
 int main( void ) {
@@ -67,7 +75,7 @@ int main( void ) {
     Vector start(2);
     start[0] = 2.75;
     start[1] = 1.25;
-    Vector X = newton_raphson_nonsquare(2, 2, &problem, start, 1e-6);
+    Vector X = newton_raphson_nonsquare(&problem, start, 1e-6);
 
     cout << X << endl;
 }

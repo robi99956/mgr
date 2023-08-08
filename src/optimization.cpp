@@ -39,10 +39,13 @@ double vector_norm(Vector &x, Vector weights) {
     return sqrt(sum);
 }
 
-Vector newton_raphson_nonsquare(int vars, int equations,
+Vector newton_raphson_nonsquare(
         OptimizationProblem * problem,
         Vector start,
         double eps) {
+
+    int equations = problem->row_count();
+    int vars = problem->variable_count();
 
     Matrix J = Matrix::Zero(equations, vars);
     Vector F = Vector::Zero(vars);
