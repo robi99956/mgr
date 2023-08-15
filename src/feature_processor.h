@@ -44,7 +44,7 @@ class FeatureProcessor {
                 int k, float ratio_thresh);
 
         vector<MatchingPoints> process(
-                InputArray previous_image, InputArray current_image,
+                InputArray &previous_image, InputArray &current_image,
                 bool display);
 };
 #endif

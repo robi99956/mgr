@@ -48,10 +48,10 @@ Vector newton_raphson_nonsquare(
     int vars = problem->variable_count();
 
     Matrix J = Matrix::Zero(equations, vars);
-    Vector F = Vector::Zero(vars);
+    Vector F = Vector::Zero(equations);
     Vector X = start;
 
-    do {
+    for( int i=0; i<10; i++ ) {
         for( int i=0; i<equations; i++ ) {
             F[i] = problem->f(i, X);
         }
@@ -62,8 +62,15 @@ Vector newton_raphson_nonsquare(
             }
         }
 
+        std::cout << "F = \n" << F << std::endl << std::endl;
+        std::cout << "X = \n" << X << std::endl << std::endl;
+        std::cout << "J = \n" << J << std::endl << std::endl;
+
         X = X - J.completeOrthogonalDecomposition().pseudoInverse() * F;
-    } while( vector_norm(F, problem->weights()) > eps );
+        if( vector_norm(F, problem->weights()) <= eps ) {
+            break;
+        }
+    }
 
     return X;
 }

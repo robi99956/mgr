@@ -11,6 +11,7 @@ public:
     double xo, yo;
 
     MovementModel( Vector &x );
+    std::string to_string();
 };
 
 class MovementDetector {
@@ -18,6 +19,7 @@ private:
     VehiclePosition last_known_position;
 
 public:
+    MovementDetector();
     VehiclePosition process(std::vector<MatchingPoints> points);
 };
 

@@ -34,6 +34,9 @@ bin/main: $(OBJECTS)
 	@echo 'Linking $@'
 	@$(CC) $(CFLAGS) $(OBJECTS) -o $@ $(LIBS)
 
+gdb:
+	gdb -ex "layout src" bin/main
+
 clean:
 	@rm -r bin
 	@rm -r build

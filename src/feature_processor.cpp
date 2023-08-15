@@ -24,8 +24,8 @@ vector<MatchingPoints> FeatureProcessor::connect_keypoints(
 
     vector<MatchingPoints> connected_points;
     for( size_t i=0; i<matches.size(); i++ ) {
-        Point2f point_prev = keypoints_prev[matches[i].trainIdx].pt;
-        Point2f point_current = keypoints_current[matches[i].queryIdx].pt;
+        Point2f point_prev = keypoints_prev[matches[i].queryIdx].pt;
+        Point2f point_current = keypoints_current[matches[i].trainIdx].pt;
         connected_points.push_back(MatchingPoints(point_prev, point_current));
     }
     return connected_points;
@@ -41,20 +41,20 @@ FeatureProcessor::FeatureProcessor(
 FeatureProcessor::FeatureProcessor(FeatureProcessorType type) {
     switch( type ) {
         case FeatureProcessorType::ORB:
-            FeatureProcessor(ORB::create(40), 
-                    DescriptorMatcher::create(DescriptorMatcher::BRUTEFORCE_HAMMING));
+            this->detector = ORB::create(40); 
+            this->matcher = DescriptorMatcher::create(DescriptorMatcher::BRUTEFORCE_HAMMING);
             break;
         case FeatureProcessorType::SIFT:
-            FeatureProcessor(SIFT::create(40), 
-                    DescriptorMatcher::create(DescriptorMatcher::FLANNBASED));
+            this->detector = SIFT::create(40);
+            this->matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
             break;
         case FeatureProcessorType::KAZE:
-            FeatureProcessor(KAZE::create(40), 
-                    DescriptorMatcher::create(DescriptorMatcher::BRUTEFORCE_HAMMING));
+            this->detector = KAZE::create(40);
+            this->matcher = DescriptorMatcher::create(DescriptorMatcher::BRUTEFORCE_HAMMING);
             break;
         case FeatureProcessorType::AKAZE:
-            FeatureProcessor(AKAZE::create(AKAZE::DESCRIPTOR_MLDB), 
-                    DescriptorMatcher::create(DescriptorMatcher::BRUTEFORCE_HAMMING));
+            this->detector = AKAZE::create(AKAZE::DESCRIPTOR_MLDB);
+            this->matcher = DescriptorMatcher::create(DescriptorMatcher::BRUTEFORCE_HAMMING);
             break;
     }
 }
@@ -72,12 +72,12 @@ vector<DMatch> FeatureProcessor::knn_match(
         int k, float ratio_thresh) {
 
     vector<vector<DMatch>> knn_matches;
-    this->matcher->knnMatch(current_desc, prev_desc, knn_matches, k); 
+    this->matcher->knnMatch(prev_desc, current_desc, knn_matches, k); 
     return filter_matches(knn_matches, ratio_thresh);
 }
 
 vector<MatchingPoints> FeatureProcessor::process(
-        InputArray previous_image, InputArray current_image,
+        InputArray &previous_image, InputArray &current_image,
         bool display) {
 
     vector<KeyPoint> keypoints_prev;

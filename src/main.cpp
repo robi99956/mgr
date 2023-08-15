@@ -6,6 +6,7 @@
 #include <Eigen/Dense>
 
 #include "feature_processor.h"
+#include "movement.h"
 #include "optimization.h"
 
 using namespace cv;
@@ -27,7 +28,7 @@ void print_connected_points( vector<MatchingPoints> &points ) {
     }
 }
 
-#if 1
+#if 0
 class TestProblem : public OptimizationProblem {
     double f(int index, Vector &x) {
         switch( index ) {
@@ -80,21 +81,28 @@ int main( void ) {
     cout << X << endl;
 }
 #endif
-#if 0
+#if 1
 int main( void ) {
-    VideoCapture camera = open_camera();
-    FeatureProcessor feature_processor(FeatureProcessorType::SIFT);
+//    VideoCapture camera = open_camera();
+    FeatureProcessor feature_processor(FeatureProcessorType::ORB);
+    MovementDetector movement_detector;
 
-    Mat previous_image, current_image;
-    camera >> previous_image;
+    Mat previous_image = imread("images/test7.jpg", IMREAD_GRAYSCALE);
+    Mat current_image = imread("images/test8.jpg", IMREAD_GRAYSCALE);
+    resize(previous_image, previous_image, Size(IMG_W, IMG_H));
+    resize(current_image, current_image, Size(IMG_W, IMG_H));
 
     while( 1 ) {
-        camera >> current_image;
+//        camera >> current_image;
         vector<MatchingPoints> connected_points = feature_processor.process(previous_image, current_image, true);
         print_connected_points(connected_points);
 
+        VehiclePosition position = movement_detector.process(connected_points);
+        cout << position.to_string() << endl;
+
         previous_image = current_image;
         waitKey();
+        break;
     }
 
     return 0;
