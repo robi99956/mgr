@@ -4,7 +4,8 @@
 #include <vector>
 #include <Eigen/Dense>
 
-typedef Eigen::VectorXf Vector;
+typedef std::vector<double> Vector;
+//typedef Eigen::VectorXf Vector;
 typedef Eigen::MatrixXf Matrix;
 
 #endif

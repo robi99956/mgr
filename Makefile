@@ -3,6 +3,7 @@ CFLAGS_CV = $(shell pkg-config --cflags opencv4)
 LIBS_CV = $(shell pkg-config --libs opencv4)
 CFLAGS_EIGEN = $(shell pkg-config --cflags eigen3)
 LIBS_EIGEN = $(shell pkg-config --libs eigen3)
+LIBS_NLOPT= -lnlopt -lm
 
 CFLAGS = $(CFLAGS_CV) $(CFLAGS_EIGEN) \
     -Wall \
@@ -10,7 +11,7 @@ CFLAGS = $(CFLAGS_CV) $(CFLAGS_EIGEN) \
     -Werror \
 	-g
 
-LIBS = $(LIBS_CV) $(LIBS_EIGEN)
+LIBS = $(LIBS_CV) $(LIBS_EIGEN) $(LIBS_NLOPT)
 
 OBJECTS = \
 	build/main.o \
@@ -18,7 +19,6 @@ OBJECTS = \
 	build/matching_points.o \
 	build/movement.o \
 	build/position.o \
-	build/optimization.o
 
 INCLUDES=-Isrc/
 
