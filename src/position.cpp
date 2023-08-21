@@ -14,7 +14,7 @@ VehiclePosition::VehiclePosition() {
 
 std::string VehiclePosition::to_string() {
     char buf[128];
-    sprintf(buf, "x = %f, y = %f, angle = %f",
+    sprintf(buf, "dx = %f, dy = %f, dangle = %f",
             this->x, this->y, this->angle);
     return std::string(buf);
 }

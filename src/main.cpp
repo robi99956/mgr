@@ -87,8 +87,13 @@ int main( void ) {
     FeatureProcessor feature_processor(FeatureProcessorType::ORB);
     MovementDetector movement_detector;
 
+#if 0
     Mat previous_image = imread("images/test7.jpg", IMREAD_GRAYSCALE);
     Mat current_image = imread("images/test8.jpg", IMREAD_GRAYSCALE);
+#else
+    Mat previous_image = imread("images/test9.jpg", IMREAD_GRAYSCALE);
+    Mat current_image = imread("images/test10.jpg", IMREAD_GRAYSCALE);
+#endif
     resize(previous_image, previous_image, Size(IMG_W, IMG_H));
     resize(current_image, current_image, Size(IMG_W, IMG_H));
 
