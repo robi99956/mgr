@@ -17,15 +17,18 @@ vector<DMatch> FeatureProcessor::filter_matches(
     return good_matches;
 }
 
-vector<MatchingPoints> FeatureProcessor::connect_keypoints(
-        vector<KeyPoint> &keypoints_prev,
+vector<MatchingPoints> FeatureProcessor::connect_keypoints_and_set_center(
+        vector<KeyPoint> &keypoints_prev, 
         vector<KeyPoint> &keypoints_current,
-        vector<DMatch> &matches) {
+        vector<DMatch> &matches,
+        Size image_size) {
+
+    Point2f center_offset(-image_size.width/2, -image_size.height/2);
 
     vector<MatchingPoints> connected_points;
     for( size_t i=0; i<matches.size(); i++ ) {
-        Point2f point_prev = keypoints_prev[matches[i].queryIdx].pt;
-        Point2f point_current = keypoints_current[matches[i].trainIdx].pt;
+        Point2f point_prev = keypoints_prev[matches[i].queryIdx].pt + center_offset;
+        Point2f point_current = keypoints_current[matches[i].trainIdx].pt + center_offset;
         connected_points.push_back(MatchingPoints(point_prev, point_current));
     }
     return connected_points;
@@ -102,5 +105,6 @@ vector<MatchingPoints> FeatureProcessor::process(
         imshow("Output", img_matches);
     }
 
-    return this->connect_keypoints(keypoints_prev, keypoints_current, good_matches);
+    return this->connect_keypoints_and_set_center(
+            keypoints_prev, keypoints_current, good_matches, previous_image.size());
 }

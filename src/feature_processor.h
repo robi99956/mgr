@@ -25,10 +25,11 @@ class FeatureProcessor {
         vector<DMatch> filter_matches(
                 vector<vector<DMatch>> &matches, const float ratio_thresh);
 
-        vector<MatchingPoints> connect_keypoints(
+        vector<MatchingPoints> connect_keypoints_and_set_center(
                 vector<KeyPoint> &keypoints_prev, 
                 vector<KeyPoint> &keypoints_current,
-                vector<DMatch> &matches);
+                vector<DMatch> &matches,
+                Size image_size);
 
     public:
         FeatureProcessor(Ptr<Feature2D> detector, Ptr<DescriptorMatcher> matcher);

@@ -4,17 +4,15 @@
 
 #define UNUSED(__x) (void)__x
 
-static inline double delta_x(const Vector &x) {return x[0];}
-static inline double delta_y(const Vector &x) {return x[1];}
-static inline double center_x(const Vector &x) {return x[2];}
-static inline double center_y(const Vector &x) {return x[3];}
-static inline double rotation(const Vector &x) {return x[4];}
+static inline double rotation(const Vector &x) {return x[0];}
+static inline double delta_x(const Vector &x) {return x[1];}
+static inline double delta_y(const Vector &x) {return x[2];}
 
 MovementModel::MovementModel(Vector &x) {
     this->dx = delta_x(x);
     this->dy = delta_y(x);
-    this->xo = center_x(x);
-    this->yo = center_y(x);
+    this->xo = 0;
+    this->yo = 0;
     this->dangle = rotation(x);
 }
 
@@ -25,103 +23,74 @@ std::string MovementModel::to_string() {
     return std::string(buf);
 }
 
-double optimization_problem(const Vector &x, Vector &grad, void * arg) {
-    std::vector<MatchingPoints> * points = static_cast<std::vector<MatchingPoints>*>(arg);
-    double error_sum = 0;
-
-    for(size_t i=0; i<grad.size(); i++) {
-        grad[i] = 0;
-    }
-
-    for(size_t i=0; i<points->size(); i++) {
-        MatchingPoints p(points->at(i));
-        double x_error = p.current.x - p.previous.x
-                - (delta_x(x) + (p.current.x - center_x(x)) * cos(rotation(x)));
-        double y_error = p.current.y - p.previous.y
-                - (delta_y(x) + (p.current.y - center_y(x)) * sin(rotation(x)));
-        error_sum += x_error*x_error + y_error*y_error;
-                
-        if( grad.empty() == false ) {
-            grad[0] += -2*(-(p.current.x-center_x(x))*cos(rotation(x))
-                            +p.current.x-p.previous.x-delta_x(x));
-            grad[1] += -2*(-(p.current.y-center_y(x))*sin(rotation(x))
-                            +p.current.y-p.previous.y-delta_y(x));
-            grad[2] += 2*cos(rotation(x))*(-(p.current.x-center_x(x))
-                            *cos(rotation(x))+p.current.x-p.previous.x-delta_x(x));
-            grad[3] += 2*sin(rotation(x))*(-(p.current.y-center_y(x))
-                            *sin(rotation(x))+p.current.y-p.previous.y-delta_y(x));
-            grad[4] += 2*(p.current.x-center_x(x))
-                    *sin(rotation(x))
-                    *(-(p.current.x-center_x(x))
-                    *cos(rotation(x))+p.current.x-p.previous.x-delta_x(x))
-
-                    -2*(p.current.y-center_y(x))
-                    *cos(rotation(x))
-                    *((p.current.y-center_y(x))
-                    *-1*sin(rotation(x))+p.current.y-p.previous.y-delta_y(x));
-        }
-    }
-
-    return error_sum / points->size();
-}
-
-double f(const Vector &x, std::vector<MatchingPoints> * points) {
-    double error_sum = 0;
-    for(size_t i=0; i<points->size(); i++) {
-        MatchingPoints p(points->at(i));
-        double x_error = p.current.x - p.previous.x
-                - (delta_x(x) + (p.current.x - center_x(x)) * cos(rotation(x)));
-        double y_error = p.current.y - p.previous.y
-                - (delta_y(x) + (p.current.y - center_y(x)) * sin(rotation(x)));
-        error_sum += x_error*x_error + y_error*y_error;
-    }
-    return sqrt(error_sum);
-}
-
-double optimization_problem_sqrt(const Vector &x, Vector &grad, void * arg) {
-    std::vector<MatchingPoints> * points = static_cast<std::vector<MatchingPoints>*>(arg);
-    double f_value = f(x, points);
-
-    const double dx = 1e-2;
-
-    for( size_t i=0; i<grad.size(); i++ ) {
-        Vector x_plus(x);
-        x_plus[i] += dx;
-        grad[i] = (f(x_plus, points) - f(x, points)) / dx;
-        printf("grad[%lu] = %f\n", i, grad[i]);
-    }
-
-    return f_value;
-}
-
 MovementDetector::MovementDetector() {
     this->last_known_position = VehiclePosition();
 }
 
-VehiclePosition MovementDetector::process(std::vector<MatchingPoints> points) {
-    nlopt::opt solver(nlopt::algorithm::LN_BOBYQA, 5);
-//    nlopt::opt solver(nlopt::algorithm::LN_COBYLA, 5);
-//    nlopt::opt solver(nlopt::algorithm::LN_NEWUOA_BOUND, 5);
-//    nlopt::opt solver(nlopt::algorithm::LD_TNEWTON, 5);
-//    nlopt::opt solver(nlopt::algorithm::LD_MMA, 5);
-//    nlopt::opt solver(nlopt::algorithm::GN_ESCH, 5);
-    solver.set_min_objective(optimization_problem_sqrt, (void*)&points);
-//    solver.set_stopval(20);
-    solver.set_ftol_rel(1e-5);
-//    solver.set_xtol_rel(1e-4);
-//    solver.set_xtol_abs((Vector){2, 2, 2, 2, 1e2});
-    solver.set_lower_bounds((Vector){-700, -900, -2000, -2000, -5});
-    solver.set_upper_bounds((Vector){700, 900, 2000, 2000, 5});
+static Matrix generate_transformation_matrix(double alpha, double t_x, double t_y) {
+    Matrix m(3, 3);
+    m << cos(alpha), -sin(alpha), t_x,
+         sin(alpha),  cos(alpha), t_y,
+         0.0,          0.0,       1;  
+    return m;
+}
 
-    Vector solution = (Vector){0, 0, 0, 0, 0};
-    double final_value = 0;
-    nlopt::result result = solver.optimize(solution, final_value);
-    printf("result = %d, fun = %f, evals = %d\n", result, final_value, solver.get_numevals());
-    for( size_t i=0; i<solution.size(); i++ ) {
-        printf("%f, ", solution[i]);
+Vector ap_movement_solver(Vector init_theta, std::vector<MatchingPoints> &points) {
+    const int epochs = 100;
+    Vector eta(3);
+    eta << 1e-6, 1e-2, 1e-2;
+    const int log_period = 10;
+
+    Matrix x = Matrix::Ones(3, points.size());
+    Matrix y = Matrix::Ones(3, points.size());
+
+    for(size_t i=0; i<points.size(); i++) {
+        x.coeffRef(0, i) = points[i].previous.x;
+        x.coeffRef(1, i) = points[i].previous.y;
+        y.coeffRef(0, i) = points[i].current.x;
+        y.coeffRef(1, i) = points[i].current.y;
     }
-    printf("\n");
 
+//    std::cout<< x << std::endl << y << std::endl;
+
+    Vector theta = init_theta;
+
+    for(int i=0; i<epochs; i++) {
+        double alpha = rotation(theta), t_x = delta_x(theta), t_y = delta_y(theta);
+
+        // forward pass
+        Matrix A = generate_transformation_matrix(alpha, t_x, t_y);
+        Matrix y_hat = A * x;
+        Matrix L = 0.5*(y_hat-y).cwiseAbs2();
+
+        if( i % log_period == 0 ) {
+            printf("epoch: %d - loss = %f, theta = %f,%f,%f\n", i, L.sum(), alpha, t_x, t_y);
+        }
+
+        // backward pass
+        Matrix dy_hat = y_hat - y;
+        Matrix dA = dy_hat * x.transpose();
+        double dalpha = dA.coeff(0, 0)*(-sin(alpha)) + dA.coeff(0, 1)*(-cos(alpha))
+            + dA.coeff(1, 0) * cos(alpha) + dA.coeff(1, 1)*(-sin(alpha));
+        double dt_x = dA.coeff(0, 2);
+        double dt_y = dA.coeff(1, 2);
+
+        Vector dtheta = Vector(3);
+        dtheta << dalpha, dt_x, dt_y;
+
+        for(int i=0; i<3; i++) {
+            theta.coeffRef(i) -= dtheta.coeff(i)*eta.coeff(i);
+        }
+    }
+
+    std::cout << "dtheta = \n" << theta << std::endl;
+    return theta;
+}
+
+VehiclePosition MovementDetector::process(std::vector<MatchingPoints> points) {
+    Vector init = Vector::Random(3);
+//    init << 0, 100, 100;
+    Vector solution = ap_movement_solver(init, points);
     MovementModel model(solution);
 
     VehiclePosition new_position(
