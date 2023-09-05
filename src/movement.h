@@ -5,6 +5,16 @@
 #include "matrix_math.h"
 #include "matching_points.h"
 
+class VehiclePositionSolution {
+    public:
+        VehiclePosition position;
+        bool was_updated;
+        VehiclePositionSolution(VehiclePosition position, bool was_updated) {
+            this->position = position;
+            this->was_updated = was_updated;
+        }
+};
+
 class MovementModel {
 public:
     double dx, dy, dangle;
@@ -20,7 +30,7 @@ private:
 
 public:
     MovementDetector();
-    VehiclePosition process(std::vector<MatchingPoints> points);
+    VehiclePositionSolution process(std::vector<MatchingPoints> points);
 };
 
 #endif

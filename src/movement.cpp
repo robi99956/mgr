@@ -8,6 +8,17 @@ static inline double rotation(const Vector &x) {return x[0];}
 static inline double delta_x(const Vector &x) {return x[1];}
 static inline double delta_y(const Vector &x) {return x[2];}
 
+class MovementSolution {
+    public:
+        Vector solution;
+        double loss;
+
+        MovementSolution(Vector solution, double loss) {
+            this->solution = solution;
+            this->loss = loss;
+        }
+};
+
 MovementModel::MovementModel(Vector &x) {
     this->dx = delta_x(x);
     this->dy = delta_y(x);
@@ -35,7 +46,7 @@ static Matrix generate_transformation_matrix(double alpha, double t_x, double t_
     return m;
 }
 
-Vector ap_movement_solver(Vector init_theta, std::vector<MatchingPoints> &points) {
+MovementSolution ap_movement_solver(Vector init_theta, std::vector<MatchingPoints> &points) {
     const int epochs = 100;
     Vector eta(3);
     eta << 1e-6, 1e-2, 1e-2;
@@ -54,6 +65,7 @@ Vector ap_movement_solver(Vector init_theta, std::vector<MatchingPoints> &points
 //    std::cout<< x << std::endl << y << std::endl;
 
     Vector theta = init_theta;
+    double loss = INFINITY;
 
     for(int i=0; i<epochs; i++) {
         double alpha = rotation(theta), t_x = delta_x(theta), t_y = delta_y(theta);
@@ -63,8 +75,9 @@ Vector ap_movement_solver(Vector init_theta, std::vector<MatchingPoints> &points
         Matrix y_hat = A * x;
         Matrix L = 0.5*(y_hat-y).cwiseAbs2();
 
+        loss = L.sum();
         if( i % log_period == 0 ) {
-            printf("epoch: %d - loss = %f, theta = %f,%f,%f\n", i, L.sum(), alpha, t_x, t_y);
+            printf("epoch: %d - loss = %f, theta = %f,%f,%f\n", i, loss, alpha, t_x, t_y);
         }
 
         // backward pass
@@ -84,14 +97,23 @@ Vector ap_movement_solver(Vector init_theta, std::vector<MatchingPoints> &points
     }
 
     std::cout << "dtheta = \n" << theta << std::endl;
-    return theta;
+    return MovementSolution(theta, loss);
 }
 
-VehiclePosition MovementDetector::process(std::vector<MatchingPoints> points) {
-    Vector init = Vector::Random(3);
-//    init << 0, 100, 100;
-    Vector solution = ap_movement_solver(init, points);
-    MovementModel model(solution);
+#define MAX_ALLOWED_LOSS 30
+#define MIN_ALLOWED_POINT_PAIRS 3
+VehiclePositionSolution MovementDetector::process(std::vector<MatchingPoints> points) {
+    if( points.size() < MIN_ALLOWED_POINT_PAIRS ) {
+        return VehiclePositionSolution(this->last_known_position, false);
+    }
+//    Vector init = Vector::Random(3);
+    Vector init = Vector::Zero(3);
+    MovementSolution solution = ap_movement_solver(init, points);
+
+    if( solution.loss > MAX_ALLOWED_LOSS ) {
+        return VehiclePositionSolution(this->last_known_position, false);
+    }
+    MovementModel model(solution.solution);
 
     VehiclePosition new_position(
             this->last_known_position.x + model.dx,
@@ -99,5 +121,5 @@ VehiclePosition MovementDetector::process(std::vector<MatchingPoints> points) {
             this->last_known_position.angle + model.dangle);
 
     this->last_known_position = new_position;
-    return new_position;
+    return VehiclePositionSolution(new_position, true);
 }

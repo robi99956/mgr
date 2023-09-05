@@ -13,14 +13,11 @@ using namespace cv;
 using std::cout;
 using std::endl;
 
-#define IMG_W 700
+#define IMG_W 600
 #define IMG_H ((IMG_W*16)/9)
 
 #define PRINT_POINT(_p) printf(#_p" = [%f, %f]\n", _p.x, _p.y)
 
-VideoCapture open_camera( void ) {
-    return VideoCapture("test.mp4");
-}
 
 void print_connected_points( vector<MatchingPoints> &points ) {
     for( size_t i=0; i<points.size(); i++ ) {
@@ -83,31 +80,46 @@ int main( void ) {
 #endif
 #if 1
 int main( void ) {
-//    VideoCapture camera = open_camera();
+    cout << getBuildInformation() << endl;
+    std::string video_path = "data/test1.mp4";
+    VideoCapture camera(video_path, cv::CAP_ANY);
+    if( camera.isOpened() == false ) {
+        cout << "Camera open error" << endl;
+        return 1;
+    }
     FeatureProcessor feature_processor(FeatureProcessorType::ORB);
     MovementDetector movement_detector;
 
 #if 1
-    Mat previous_image = imread("images/test7.jpg", IMREAD_GRAYSCALE);
-    Mat current_image = imread("images/test8.jpg", IMREAD_GRAYSCALE);
+//    Mat previous_image = imread("data/test7.jpg", IMREAD_GRAYSCALE);
+//    Mat current_image = imread("data/test8.jpg", IMREAD_GRAYSCALE);
 #else
     Mat previous_image = imread("images/test9.jpg", IMREAD_GRAYSCALE);
     Mat current_image = imread("images/test10.jpg", IMREAD_GRAYSCALE);
 #endif
-    resize(previous_image, previous_image, Size(IMG_W, IMG_H));
-    resize(current_image, current_image, Size(IMG_W, IMG_H));
 
-    while( 1 ) {
-//        camera >> current_image;
+    Mat current_image, previous_image;
+    camera >> previous_image;
+    resize(previous_image, previous_image, Size(IMG_W, IMG_H));
+    int dropped_updates = 0;
+
+    while( camera.read(current_image) ) {
+        resize(current_image, current_image, Size(IMG_W, IMG_H));
+
         vector<MatchingPoints> connected_points = feature_processor.process(previous_image, current_image, true);
         print_connected_points(connected_points);
 
-        VehiclePosition position = movement_detector.process(connected_points);
-        cout << position.to_string() << endl;
+        VehiclePositionSolution position_solution = movement_detector.process(connected_points);
+        cout << position_solution.position.to_string() << endl;
+        cout << position_solution.was_updated << endl;
 
-        previous_image = current_image;
-        waitKey();
-        break;
+        if( position_solution.was_updated || dropped_updates > 5) {
+            dropped_updates = 0;
+            previous_image = current_image;
+        } else {
+            dropped_updates++;
+        }
+        waitKey(20);
     }
 
     return 0;

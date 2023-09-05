@@ -75,7 +75,11 @@ vector<DMatch> FeatureProcessor::knn_match(
         int k, float ratio_thresh) {
 
     vector<vector<DMatch>> knn_matches;
-    this->matcher->knnMatch(prev_desc, current_desc, knn_matches, k); 
+    try {
+        this->matcher->knnMatch(prev_desc, current_desc, knn_matches, k); 
+    } catch(...) {
+        return vector<DMatch>();
+    }
     return filter_matches(knn_matches, ratio_thresh);
 }
 
