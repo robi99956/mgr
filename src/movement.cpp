@@ -46,8 +46,10 @@ static Matrix generate_transformation_matrix(double alpha, double t_x, double t_
     return m;
 }
 
+#define MIN_LOSS_CHANGE 5e-2
+#define INFINITY_GOOD_ENOUGH 1500100900.0
 MovementSolution ap_movement_solver(Vector init_theta, std::vector<MatchingPoints> &points) {
-    const int epochs = 100;
+    const int epochs = 150;
     Vector eta(3);
     eta << 1e-6, 1e-2, 1e-2;
     const int log_period = 10;
@@ -65,9 +67,11 @@ MovementSolution ap_movement_solver(Vector init_theta, std::vector<MatchingPoint
 //    std::cout<< x << std::endl << y << std::endl;
 
     Vector theta = init_theta;
-    double loss = INFINITY;
+    double loss = INFINITY_GOOD_ENOUGH/2;
+    double prev_loss = INFINITY_GOOD_ENOUGH;
 
-    for(int i=0; i<epochs; i++) {
+    for(int i=0; i<epochs && (prev_loss - loss) > MIN_LOSS_CHANGE; i++) {
+        prev_loss = loss;
         double alpha = rotation(theta), t_x = delta_x(theta), t_y = delta_y(theta);
 
         // forward pass
@@ -97,17 +101,53 @@ MovementSolution ap_movement_solver(Vector init_theta, std::vector<MatchingPoint
     }
 
     std::cout << "dtheta = \n" << theta << std::endl;
+    printf("final loss = %f\n", loss);
     return MovementSolution(theta, loss);
 }
 
-#define MAX_ALLOWED_LOSS 30
+static double distance(Point2f a, Point2f b) {
+    double dx = a.x - b.x;
+    double dy = a.y - b.y;
+
+    return dx*dx + dy*dy;
+}
+
+static double calculate_point_spread(std::vector<MatchingPoints> &points) {
+    Point2f center_previous, center_current;
+    size_t len = points.size();
+
+    for( size_t i=0; i<len; i++ ) {
+        center_current += points[i].current;
+        center_previous += points[i].previous;
+    }
+
+    center_current.x /= len;
+    center_current.y /= len;
+    center_previous.x /= len;
+    center_previous.y /= len;
+
+    double avg_dist_current = 0, avg_dist_previous = 0;
+    for( size_t i=0; i<len; i++ ) {
+        avg_dist_previous += distance(center_previous, points[i].previous);
+        avg_dist_current = distance(center_current, points[i].current);
+    }
+
+    return (avg_dist_current + avg_dist_previous) / len;
+}
+
+#define MAX_ALLOWED_LOSS 50
 #define MIN_ALLOWED_POINT_PAIRS 3
+#define MIN_ALLOWED_SPREAD 1000
 VehiclePositionSolution MovementDetector::process(std::vector<MatchingPoints> points) {
-    if( points.size() < MIN_ALLOWED_POINT_PAIRS ) {
+    double spread = calculate_point_spread(points);
+    printf("Spread = %f\n", spread);
+
+    if( points.size() < MIN_ALLOWED_POINT_PAIRS || spread < MIN_ALLOWED_SPREAD ) {
         return VehiclePositionSolution(this->last_known_position, false);
     }
-//    Vector init = Vector::Random(3);
-    Vector init = Vector::Zero(3);
+
+    Vector init = Vector::Random(3);
+//    Vector init = Vector::Zero(3);
     MovementSolution solution = ap_movement_solver(init, points);
 
     if( solution.loss > MAX_ALLOWED_LOSS ) {
@@ -115,9 +155,11 @@ VehiclePositionSolution MovementDetector::process(std::vector<MatchingPoints> po
     }
     MovementModel model(solution.solution);
 
+    double ds = sqrt(model.dx*model.dx + model.dy*model.dy);
+
     VehiclePosition new_position(
-            this->last_known_position.x + model.dx,
-            this->last_known_position.y + model.dy,
+            this->last_known_position.x + ds * cos(this->last_known_position.angle),
+            this->last_known_position.y + ds * sin(this->last_known_position.angle),
             this->last_known_position.angle + model.dangle);
 
     this->last_known_position = new_position;

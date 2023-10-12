@@ -19,6 +19,7 @@ OBJECTS = \
 	build/matching_points.o \
 	build/movement.o \
 	build/position.o \
+	build/iagcwd.o
 
 INCLUDES=-Isrc/
 

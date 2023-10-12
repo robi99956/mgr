@@ -1,23 +1,23 @@
 #include <iostream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
-#include "opencv2/highgui.hpp"
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <Eigen/Dense>
 
 #include "feature_processor.h"
 #include "movement.h"
 #include "optimization.h"
+#include "image_preprocessing.h"
 
 using namespace cv;
 using std::cout;
 using std::endl;
 
-#define IMG_W 600
-#define IMG_H ((IMG_W*16)/9)
+#define SCALE_FACTOR 1
 
 #define PRINT_POINT(_p) printf(#_p" = [%f, %f]\n", _p.x, _p.y)
-
 
 void print_connected_points( vector<MatchingPoints> &points ) {
     for( size_t i=0; i<points.size(); i++ ) {
@@ -79,9 +79,46 @@ int main( void ) {
 }
 #endif
 #if 1
-int main( void ) {
-    cout << getBuildInformation() << endl;
-    std::string video_path = "data/test1.mp4";
+void sharpen(Mat &img) {
+    Mat kernel = (Mat_<double>(3,3) << 
+            0, -1, 0,
+            -1, 5, -1,
+            0, -1, 0);
+    filter2D(img, img, -1, kernel);
+}
+
+void remove_shutter_distortion(Mat &img, int speed) {
+    Mat copy = img.clone(); 
+
+    for( int y = 0; y<img.rows; y++ ) {
+        int shift = (y*speed) / img.rows;
+        for( int x=0; x<img.cols; x++ ) {
+            int dst_x = x+shift;
+            if( dst_x < 0 || dst_x > img.cols ) {
+                continue;
+            }
+            img.at<uint8_t>(y, dst_x) = copy.at<uint8_t>(y, x);
+        }
+    }
+
+    img = img(Rect(MAX(0, speed), 0, img.cols-2*speed, img.rows));
+}
+
+void preprocess_image(Mat &img) {
+    resize(img, img, 
+            Size(img.size[1] / SCALE_FACTOR, img.size[0] / SCALE_FACTOR));
+    cvtColor(img, img, COLOR_BGR2GRAY);
+//    GaussianBlur(img, img, Size(3, 3), 0);
+    IAGCWD(img, img);
+    sharpen(img);
+//    remove_shutter_distortion(img, 50);
+}
+
+#define FRAME_SKIP_THRESHOLD 1
+
+int main( int argc, char ** argv ) {
+    (void)argc;
+    std::string video_path = argv[1];
     VideoCapture camera(video_path, cv::CAP_ANY);
     if( camera.isOpened() == false ) {
         cout << "Camera open error" << endl;
@@ -100,26 +137,40 @@ int main( void ) {
 
     Mat current_image, previous_image;
     camera >> previous_image;
-    resize(previous_image, previous_image, Size(IMG_W, IMG_H));
+    preprocess_image(previous_image);
     int dropped_updates = 0;
 
+    int frame_counter = 0;
     while( camera.read(current_image) ) {
-        resize(current_image, current_image, Size(IMG_W, IMG_H));
+        preprocess_image(current_image);
 
         vector<MatchingPoints> connected_points = feature_processor.process(previous_image, current_image, true);
-        print_connected_points(connected_points);
+//        print_connected_points(connected_points);
 
         VehiclePositionSolution position_solution = movement_detector.process(connected_points);
-        cout << position_solution.position.to_string() << endl;
-        cout << position_solution.was_updated << endl;
+        if( frame_counter % 50 == 0 ) {
+            printf("%d,%f,%f,%f\n", 
+                    frame_counter,
+                    position_solution.position.x,
+                    position_solution.position.y,
+                    position_solution.position.angle);
+        }
+        frame_counter++;
+//        cout << position_solution.position.to_string() << endl;
+//        cout << position_solution.was_updated << endl;
 
-        if( position_solution.was_updated || dropped_updates > 5) {
+        if( position_solution.was_updated || dropped_updates > FRAME_SKIP_THRESHOLD) {
+            if( dropped_updates > FRAME_SKIP_THRESHOLD ) {
+                cout << "Frame force updated" << endl;
+            }
+            cout << "Frame updated" << endl;
             dropped_updates = 0;
-            previous_image = current_image;
+//            previous_image = current_image;
+            current_image.copyTo(previous_image);
         } else {
             dropped_updates++;
         }
-        waitKey(20);
+        waitKey();
     }
 
     return 0;
